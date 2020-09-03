@@ -265,7 +265,6 @@ class StylusCompletion {
             properties = getProperties(cssSchema, currentWord, config.get("useSeparator", true));
             symbols = utils_1.compact(getAllSymbols(text, currentWord));
         }
-        console.log(JSON.stringify(symbols));
         const completions = [].concat(symbols, atRules, properties, values, isMap ? [] : config.get("useBuiltinFunctions", true) ? built_in_1.default : []);
         return completions;
     }

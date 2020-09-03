@@ -338,7 +338,6 @@ class StylusCompletion implements CompletionItemProvider {
       );
       symbols = compact(getAllSymbols(text, currentWord));
     }
-    console.log(JSON.stringify(symbols));
     const completions = [].concat(
       symbols,
       atRules,

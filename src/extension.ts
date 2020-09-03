@@ -23,9 +23,8 @@ export function activate(context: vscode.ExtensionContext) {
   const completionItemProvider = new CompletionProvider();
 
   var filePath = path.join(vscode.workspace.rootPath, varsFilePath);
-  console.log("stylus-vars-file", filePath, fs.existsSync(filePath));
 
-  if (filePath) {
+  if (varsFilePath) {
     if (fs.existsSync(filePath)) {
       var content = fs.readFileSync(filePath).toString();
       completionItemProvider.updateVariables(content);
