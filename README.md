@@ -11,16 +11,17 @@ Syntax was stolen from here: https://github.com/matthojo/language-stylus.
 
 ### Features
 
-* Syntax highlighting
-* Symbols provider
-* Completion for selectors, properties, values, variables, functions etc.
-* Color preview
+- Syntax highlighting
+- Symbols provider
+- Completion for selectors, properties, values, variables, functions etc.
+- Color preview
 
 ![Completion in Action](assets/completion.gif)
 
 ![Symbols Provider in Action](assets/symbols.gif)
 
 ### Configuration
+
 ```js
 {
   // Use ':' as separator between property and value
@@ -29,9 +30,12 @@ Syntax was stolen from here: https://github.com/matthojo/language-stylus.
   "languageStylus.useBuiltinFunctions": true, // default value
   // Toggle colors preview
   "editor.colorDecorators": true // default value
+  // import variables file
+  "languageStylus.variablesFilePath": "/vars.styl"  //default "" . equal "${workspacesFolder}/vars.styl"
 }
 ```
 
 ### TODO
-* Tags completion
-* SVG properties completion
+
+- Tags completion
+- SVG properties completion

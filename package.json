@@ -1,6 +1,6 @@
 {
-  "name": "language-stylus",
-  "displayName": "language-stylus",
+  "name": "language-stylus-plus",
+  "displayName": "language-stylus-plus",
   "description": "Stylus language support",
   "version": "1.11.0",
   "publisher": "sysoev",
@@ -19,7 +19,7 @@
   "keywords": [
     "vscode",
     "stylus",
-    "language-stylus",
+    "language-stylus-plus",
     "vscode-stylus",
     "language-support",
     "stylus-intellisense"
