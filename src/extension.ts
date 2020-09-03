@@ -1,29 +1,54 @@
-'use strict';
+"use strict";
 // The module 'vscode' contains the VS Code extensibility API
 // Import the module and reference it with the alias vscode in your code below
-import * as vscode from 'vscode';
-
-import CompletionProvider from './completion-item-provider';
-import { StylusDocumentSimbolsProvider } from './symbols-provider';
-import { activateColorDecorations } from './color-decorators';
+import * as vscode from "vscode";
+import * as path from "path";
+import * as fs from "fs";
+import CompletionProvider from "./completion-item-provider";
+import { StylusDocumentSimbolsProvider } from "./symbols-provider";
+import { activateColorDecorations } from "./color-decorators";
 
 const DOCUMENT_SELECTOR = {
-  language: 'stylus',
-  scheme: 'file'
+  language: "stylus",
+  scheme: "file",
 };
 
 // this method is called when your extension is activated
 // your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
-  const editorConfig = vscode.workspace.getConfiguration('editor');
-  console.log(editorConfig);
-  const config = vscode.workspace.getConfiguration('languageStylus');
+  const editorConfig = vscode.workspace.getConfiguration("editor");
+  const config = vscode.workspace.getConfiguration("languageStylus");
+  const varsFilePath: string = config.get("variablesFilePath");
+
   const completionItemProvider = new CompletionProvider();
-  const completionProviderDisposable = vscode.languages
-    .registerCompletionItemProvider(DOCUMENT_SELECTOR, completionItemProvider, '\\.', '$', '-', '&', '@');
+
+  var filePath = path.join(vscode.workspace.rootPath, varsFilePath);
+  if (filePath) {
+    if (fs.existsSync(filePath)) {
+      var content = fs.readFileSync(filePath).toString();
+      completionItemProvider.updateVariables(content);
+      vscode.workspace.onDidChangeTextDocument((event) => {
+        if (event.document.uri.fsPath !== filePath) return;
+        completionItemProvider.updateVariables(event.document.getText());
+      });
+    } else {
+      vscode.window.showErrorMessage("cannot find the file at " + filePath);
+    }
+  }
+
+  const completionProviderDisposable = vscode.languages.registerCompletionItemProvider(
+    DOCUMENT_SELECTOR,
+    completionItemProvider,
+    "\\.",
+    "$",
+    "-",
+    "&",
+    "@",
+    "["
+  );
   context.subscriptions.push(completionProviderDisposable);
 
-  vscode.languages.setLanguageConfiguration('stylus', {
+  vscode.languages.setLanguageConfiguration("stylus", {
     wordPattern: /(#?-?\d*\.\d\w*%?)|([$@#!.:]?[\w-?]+%?)|[$@#!.]/g,
     onEnterRules: [
       // Indent after .class_name, #id, @media, [attr=sddsf]
@@ -45,15 +70,18 @@ export function activate(context: vscode.ExtensionContext) {
       {
         beforeText: /^(\s?)+for.+in.+$/gi,
         action: { indentAction: vscode.IndentAction.Indent },
-      }
-    ]
+      },
+    ],
   });
 
   const symbolsProvider = new StylusDocumentSimbolsProvider();
-  const symbolsProviderDisposable = vscode.languages.registerDocumentSymbolProvider(DOCUMENT_SELECTOR, symbolsProvider);
+  const symbolsProviderDisposable = vscode.languages.registerDocumentSymbolProvider(
+    DOCUMENT_SELECTOR,
+    symbolsProvider
+  );
   context.subscriptions.push(symbolsProviderDisposable);
 
-  if (editorConfig.get('colorDecorators')) {
+  if (editorConfig.get("colorDecorators")) {
     context.subscriptions.push(activateColorDecorations());
   }
 }

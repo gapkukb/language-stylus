@@ -1,31 +1,44 @@
 import {
-  CompletionItemProvider, CompletionItem, CompletionItemKind,
-  TextDocument, Position, CancellationToken, Range,
-  workspace
-} from 'vscode';
+  CompletionItemProvider,
+  CompletionItem,
+  CompletionItemKind,
+  TextDocument,
+  Position,
+  CancellationToken,
+  Range,
+  workspace,
+} from "vscode";
 
 import {
   StylusNode,
-  buildAst, flattenAndFilterAst,
-  isFunctionNode, isSelectorCallNode, isSelectorNode, isVariableNode
-} from './parser';
+  buildAst,
+  flattenAndFilterAst,
+  isFunctionNode,
+  isSelectorCallNode,
+  isSelectorNode,
+  isVariableNode,
+} from "./parser";
 
-import {
-  compact,
-  prepareName
-} from './utils';
+import { compact, prepareName } from "./utils";
 
-import * as cssSchema from './css-schema';
-import builtIn from './built-in';
-import { getPropertyDescription } from './languageFacts';
+import * as cssSchema from "./css-schema";
+import builtIn from "./built-in";
+import { getPropertyDescription } from "./languageFacts";
 
 /**
  * Naive check whether currentWord is class or id
  * @param {String} currentWord
  * @return {Boolean}
  */
-export function isClassOrId(currentWord:string) : boolean {
-  return currentWord.startsWith('.') || currentWord.startsWith('#') || currentWord.startsWith('&');
+export function isClassOrId(currentWord: string): boolean {
+  return (
+    currentWord.startsWith(".") ||
+    currentWord.startsWith("#") ||
+    currentWord.startsWith("&")
+  );
+}
+export function isHashMap(currentWord: string): boolean {
+  return currentWord.search(/[\.\[]/) != -1;
 }
 
 /**
@@ -33,8 +46,8 @@ export function isClassOrId(currentWord:string) : boolean {
  * @param {String} currentWord
  * @return {Boolean}
  */
-export function isAtRule(currentWord:string) : boolean {
-  return currentWord.startsWith('\@');
+export function isAtRule(currentWord: string): boolean {
+  return currentWord.startsWith("@");
 }
 
 /**
@@ -43,7 +56,7 @@ export function isAtRule(currentWord:string) : boolean {
  * @param {String} currentWord
  * @return {Boolean}
  */
-export function isValue(cssSchema, currentWord:string) : boolean {
+export function isValue(cssSchema, currentWord: string): boolean {
   const property = getPropertyName(currentWord);
 
   return property && Boolean(findPropertySchema(cssSchema, property));
@@ -54,8 +67,8 @@ export function isValue(cssSchema, currentWord:string) : boolean {
  * @param {String} currentWord
  * @return {String}
  */
-export function getPropertyName(currentWord:string) : string {
-  return currentWord.trim().replace(':', ' ').split(' ')[0];
+export function getPropertyName(currentWord: string): string {
+  return currentWord.trim().replace(":", " ").split(" ")[0];
 }
 
 /**
@@ -64,8 +77,8 @@ export function getPropertyName(currentWord:string) : string {
  * @param {String} property
  * @return {Object}
  */
-export function findPropertySchema(cssSchema, property:string) {
-  return cssSchema.data.css.properties.find(item => item.name === property);
+export function findPropertySchema(cssSchema, property: string) {
+  return cssSchema.data.css.properties.find((item) => item.name === property);
 }
 
 /**
@@ -74,7 +87,11 @@ export function findPropertySchema(cssSchema, property:string) {
  * @param {String[]} text - text editor content splitted by lines
  * @return {SymbolInformation}
  */
-function _variableSymbol(node:StylusNode, text:string[], currentWord:string) : CompletionItem {
+function _variableSymbol(
+  node: StylusNode,
+  text: string[],
+  currentWord: string
+): CompletionItem {
   const name = node.name;
   const lineno = Number(node.val.lineno) - 1;
 
@@ -91,7 +108,7 @@ function _variableSymbol(node:StylusNode, text:string[], currentWord:string) : C
  * @param {String[]} text - text editor content splitted by lines
  * @return {CompletionItem}
  */
-function _functionSymbol(node:StylusNode, text:string[]) : CompletionItem {
+function _functionSymbol(node: StylusNode, text: string[]): CompletionItem {
   const name = node.name;
 
   const completionItem = new CompletionItem(name);
@@ -107,11 +124,15 @@ function _functionSymbol(node:StylusNode, text:string[]) : CompletionItem {
  * @param {String} currentWord
  * @return {CompletionItem}
  */
-function _selectorSymbol(node:StylusNode, text:string[], currentWord:string) : CompletionItem {
+function _selectorSymbol(
+  node: StylusNode,
+  text: string[],
+  currentWord: string
+): CompletionItem {
   const firstSegment = node.segments[0];
-  const name = firstSegment.string ?
-    node.segments.map(s => s.string).join('') :
-    firstSegment.nodes.map(s => s.name).join('');
+  const name = firstSegment.string
+    ? node.segments.map((s) => s.string).join("")
+    : firstSegment.nodes.map((s) => s.name).join("");
 
   const completionItem = new CompletionItem(name);
   completionItem.kind = CompletionItemKind.Class;
@@ -125,7 +146,7 @@ function _selectorSymbol(node:StylusNode, text:string[], currentWord:string) : C
  * @param {String[]} text - text editor content splitted by lines
  * @return {CompletionItem}
  */
-function _selectorCallSymbol(node:StylusNode, text:string[]) : CompletionItem {
+function _selectorCallSymbol(node: StylusNode, text: string[]): CompletionItem {
   const lineno = Number(node.lineno) - 1;
   const name = prepareName(text[lineno]);
 
@@ -141,13 +162,27 @@ function _selectorCallSymbol(node:StylusNode, text:string[]) : CompletionItem {
  * @param {String} currentWord
  * @return {CompletionItem}
  */
-export function getAllSymbols(text:string, currentWord:string) : CompletionItem[] {
+export function getAllSymbols(
+  text: string,
+  currentWord: string
+): CompletionItem[] {
   const ast = buildAst(text);
-  const splittedText = text.split('\n');
-  const rawSymbols = flattenAndFilterAst(ast).filter(item =>
-    item && ['media', 'keyframes', 'atrule', 'import', 'require', 'supports', 'literal'].indexOf(item.nodeName) === -1);
+  const splittedText = text.split("\n");
+  const rawSymbols = flattenAndFilterAst(ast).filter(
+    (item) =>
+      item &&
+      [
+        "media",
+        "keyframes",
+        "atrule",
+        "import",
+        "require",
+        "supports",
+        "literal",
+      ].indexOf(item.nodeName) === -1
+  );
 
-  return rawSymbols.map(item => {
+  return rawSymbols.map((item) => {
     if (isVariableNode(item)) {
       return _variableSymbol(item, splittedText, currentWord);
     }
@@ -172,10 +207,10 @@ export function getAllSymbols(text:string, currentWord:string) : CompletionItem[
  * @param {String} currentWord
  * @return {CompletionItem}
  */
-export function getAtRules(cssSchema, currentWord:string) : CompletionItem[] {
+export function getAtRules(cssSchema, currentWord: string): CompletionItem[] {
   if (!isAtRule(currentWord)) return [];
 
-  return cssSchema.data.css.atdirectives.map(property => {
+  return cssSchema.data.css.atdirectives.map((property) => {
     const completionItem = new CompletionItem(property.name);
 
     completionItem.detail = property.desc;
@@ -191,13 +226,17 @@ export function getAtRules(cssSchema, currentWord:string) : CompletionItem[] {
  * @param {String} currentWord
  * @return {CompletionItem}
  */
-export function getProperties(cssSchema, currentWord:string, useSeparator:boolean) : CompletionItem[] {
+export function getProperties(
+  cssSchema,
+  currentWord: string,
+  useSeparator: boolean
+): CompletionItem[] {
   if (isClassOrId(currentWord) || isAtRule(currentWord)) return [];
 
-  return cssSchema.data.css.properties.map(property => {
+  return cssSchema.data.css.properties.map((property) => {
     const completionItem = new CompletionItem(property.name);
 
-    completionItem.insertText = property.name + (useSeparator ? ': ' : ' ');
+    completionItem.insertText = property.name + (useSeparator ? ": " : " ");
     completionItem.documentation = getPropertyDescription(property);
     completionItem.kind = CompletionItemKind.Property;
 
@@ -211,13 +250,13 @@ export function getProperties(cssSchema, currentWord:string, useSeparator:boolea
  * @param {String} currentWord
  * @return {CompletionItem}
  */
-export function getValues(cssSchema, currentWord:string) : CompletionItem[] {
+export function getValues(cssSchema, currentWord: string): CompletionItem[] {
   const property = getPropertyName(currentWord);
   const values = findPropertySchema(cssSchema, property).values;
 
   if (!values) return [];
 
-  return values.map(property => {
+  return values.map((property) => {
     const completionItem = new CompletionItem(property.name);
 
     completionItem.detail = property.desc;
@@ -228,36 +267,62 @@ export function getValues(cssSchema, currentWord:string) : CompletionItem[] {
 }
 
 class StylusCompletion implements CompletionItemProvider {
-  provideCompletionItems(document: TextDocument, position: Position, token: CancellationToken) : CompletionItem[] {
+  content = "";
+  updateVariables(content = "") {
+    this.content = content;
+  }
+  provideCompletionItems(
+    document: TextDocument,
+    position: Position,
+    token: CancellationToken
+  ): CompletionItem[] {
     const start = new Position(position.line, 0);
     const range = new Range(start, position);
-    const currentWord = document.getText(range).trim();
-    const text = document.getText();
+    let currentWord = document.getText(range).trim();
+    let text = this.content + document.getText();
     const value = isValue(cssSchema, currentWord);
-    const config = workspace.getConfiguration('languageStylus');
-
+    const config = workspace.getConfiguration("languageStylus");
+    const isMap = isHashMap(currentWord);
     let symbols = [],
-        atRules = [],
-        properties = [],
-        values = [];
-
+      atRules = [],
+      properties = [],
+      values = [];
     if (value) {
-      values = getValues(cssSchema, currentWord);
-      symbols = compact(getAllSymbols(text, currentWord)).filter(item =>
-        item.kind === CompletionItemKind.Variable
-      );
+      if (isMap) {
+        currentWord = currentWord.trim().replace(":", " ").split(" ")[1];
+        const words = currentWord.split(/[\.\[\]]/);
+        text = text
+          .match(new RegExp("\\" + words[0] + ".*=.*([\\s\\S]*).*\\}", "im"))[1]
+          .replace(/\:/g, "=");
+        symbols = compact(getAllSymbols(text, words[1])).filter(
+          (item) => item.kind === CompletionItemKind.Variable
+        );
+        if (currentWord.includes(".")) {
+          symbols.forEach((item) => {
+            item.label = words[1] + "." + item.label;
+          });
+        }
+      } else {
+        values = getValues(cssSchema, currentWord);
+        symbols = compact(getAllSymbols(text, currentWord)).filter(
+          (item) => item.kind === CompletionItemKind.Variable
+        );
+      }
     } else {
       atRules = getAtRules(cssSchema, currentWord);
-      properties = getProperties(cssSchema, currentWord, config.get('useSeparator', true));
+      properties = getProperties(
+        cssSchema,
+        currentWord,
+        config.get("useSeparator", true)
+      );
       symbols = compact(getAllSymbols(text, currentWord));
     }
-
     const completions = [].concat(
       symbols,
       atRules,
       properties,
       values,
-      config.get('useBuiltinFunctions', true) ? builtIn : []
+      isMap ? [] : config.get("useBuiltinFunctions", true) ? builtIn : []
     );
 
     return completions;

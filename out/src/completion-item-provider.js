@@ -12,16 +12,22 @@ const languageFacts_1 = require("./languageFacts");
  * @return {Boolean}
  */
 function isClassOrId(currentWord) {
-    return currentWord.startsWith('.') || currentWord.startsWith('#') || currentWord.startsWith('&');
+    return (currentWord.startsWith(".") ||
+        currentWord.startsWith("#") ||
+        currentWord.startsWith("&"));
 }
 exports.isClassOrId = isClassOrId;
+function isHashMap(currentWord) {
+    return currentWord.search(/[\.\[]/) != -1;
+}
+exports.isHashMap = isHashMap;
 /**
  * Naive check whether currentWord is at rule
  * @param {String} currentWord
  * @return {Boolean}
  */
 function isAtRule(currentWord) {
-    return currentWord.startsWith('\@');
+    return currentWord.startsWith("@");
 }
 exports.isAtRule = isAtRule;
 /**
@@ -41,7 +47,7 @@ exports.isValue = isValue;
  * @return {String}
  */
 function getPropertyName(currentWord) {
-    return currentWord.trim().replace(':', ' ').split(' ')[0];
+    return currentWord.trim().replace(":", " ").split(" ")[0];
 }
 exports.getPropertyName = getPropertyName;
 /**
@@ -51,7 +57,7 @@ exports.getPropertyName = getPropertyName;
  * @return {Object}
  */
 function findPropertySchema(cssSchema, property) {
-    return cssSchema.data.css.properties.find(item => item.name === property);
+    return cssSchema.data.css.properties.find((item) => item.name === property);
 }
 exports.findPropertySchema = findPropertySchema;
 /**
@@ -89,9 +95,9 @@ function _functionSymbol(node, text) {
  */
 function _selectorSymbol(node, text, currentWord) {
     const firstSegment = node.segments[0];
-    const name = firstSegment.string ?
-        node.segments.map(s => s.string).join('') :
-        firstSegment.nodes.map(s => s.name).join('');
+    const name = firstSegment.string
+        ? node.segments.map((s) => s.string).join("")
+        : firstSegment.nodes.map((s) => s.name).join("");
     const completionItem = new vscode_1.CompletionItem(name);
     completionItem.kind = vscode_1.CompletionItemKind.Class;
     return completionItem;
@@ -117,9 +123,18 @@ function _selectorCallSymbol(node, text) {
  */
 function getAllSymbols(text, currentWord) {
     const ast = parser_1.buildAst(text);
-    const splittedText = text.split('\n');
-    const rawSymbols = parser_1.flattenAndFilterAst(ast).filter(item => item && ['media', 'keyframes', 'atrule', 'import', 'require', 'supports', 'literal'].indexOf(item.nodeName) === -1);
-    return rawSymbols.map(item => {
+    const splittedText = text.split("\n");
+    const rawSymbols = parser_1.flattenAndFilterAst(ast).filter((item) => item &&
+        [
+            "media",
+            "keyframes",
+            "atrule",
+            "import",
+            "require",
+            "supports",
+            "literal",
+        ].indexOf(item.nodeName) === -1);
+    return rawSymbols.map((item) => {
         if (parser_1.isVariableNode(item)) {
             return _variableSymbol(item, splittedText, currentWord);
         }
@@ -144,7 +159,7 @@ exports.getAllSymbols = getAllSymbols;
 function getAtRules(cssSchema, currentWord) {
     if (!isAtRule(currentWord))
         return [];
-    return cssSchema.data.css.atdirectives.map(property => {
+    return cssSchema.data.css.atdirectives.map((property) => {
         const completionItem = new vscode_1.CompletionItem(property.name);
         completionItem.detail = property.desc;
         completionItem.kind = vscode_1.CompletionItemKind.Keyword;
@@ -161,9 +176,9 @@ exports.getAtRules = getAtRules;
 function getProperties(cssSchema, currentWord, useSeparator) {
     if (isClassOrId(currentWord) || isAtRule(currentWord))
         return [];
-    return cssSchema.data.css.properties.map(property => {
+    return cssSchema.data.css.properties.map((property) => {
         const completionItem = new vscode_1.CompletionItem(property.name);
-        completionItem.insertText = property.name + (useSeparator ? ': ' : ' ');
+        completionItem.insertText = property.name + (useSeparator ? ": " : " ");
         completionItem.documentation = languageFacts_1.getPropertyDescription(property);
         completionItem.kind = vscode_1.CompletionItemKind.Property;
         return completionItem;
@@ -181,7 +196,7 @@ function getValues(cssSchema, currentWord) {
     const values = findPropertySchema(cssSchema, property).values;
     if (!values)
         return [];
-    return values.map(property => {
+    return values.map((property) => {
         const completionItem = new vscode_1.CompletionItem(property.name);
         completionItem.detail = property.desc;
         completionItem.kind = vscode_1.CompletionItemKind.Value;
@@ -190,24 +205,46 @@ function getValues(cssSchema, currentWord) {
 }
 exports.getValues = getValues;
 class StylusCompletion {
+    constructor() {
+        this.content = "";
+    }
+    updateVariables(content = "") {
+        this.content = content;
+    }
     provideCompletionItems(document, position, token) {
         const start = new vscode_1.Position(position.line, 0);
         const range = new vscode_1.Range(start, position);
-        const currentWord = document.getText(range).trim();
-        const text = document.getText();
+        let currentWord = document.getText(range).trim();
+        let text = this.content + document.getText();
         const value = isValue(cssSchema, currentWord);
-        const config = vscode_1.workspace.getConfiguration('languageStylus');
+        const config = vscode_1.workspace.getConfiguration("languageStylus");
+        const isMap = isHashMap(currentWord);
         let symbols = [], atRules = [], properties = [], values = [];
         if (value) {
-            values = getValues(cssSchema, currentWord);
-            symbols = utils_1.compact(getAllSymbols(text, currentWord)).filter(item => item.kind === vscode_1.CompletionItemKind.Variable);
+            if (isMap) {
+                currentWord = currentWord.trim().replace(":", " ").split(" ")[1];
+                const words = currentWord.split(/[\.\[\]]/);
+                text = text
+                    .match(new RegExp("\\" + words[0] + ".*=.*([\\s\\S]*).*\\}", "im"))[1]
+                    .replace(/\:/g, "=");
+                symbols = utils_1.compact(getAllSymbols(text, words[1])).filter((item) => item.kind === vscode_1.CompletionItemKind.Variable);
+                if (currentWord.includes(".")) {
+                    symbols.forEach((item) => {
+                        item.label = words[1] + "." + item.label;
+                    });
+                }
+            }
+            else {
+                values = getValues(cssSchema, currentWord);
+                symbols = utils_1.compact(getAllSymbols(text, currentWord)).filter((item) => item.kind === vscode_1.CompletionItemKind.Variable);
+            }
         }
         else {
             atRules = getAtRules(cssSchema, currentWord);
-            properties = getProperties(cssSchema, currentWord, config.get('useSeparator', true));
+            properties = getProperties(cssSchema, currentWord, config.get("useSeparator", true));
             symbols = utils_1.compact(getAllSymbols(text, currentWord));
         }
-        const completions = [].concat(symbols, atRules, properties, values, config.get('useBuiltinFunctions', true) ? built_in_1.default : []);
+        const completions = [].concat(symbols, atRules, properties, values, isMap ? [] : config.get("useBuiltinFunctions", true) ? built_in_1.default : []);
         return completions;
     }
 }
