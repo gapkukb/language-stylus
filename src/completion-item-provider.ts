@@ -155,7 +155,18 @@ function _selectorCallSymbol(node: StylusNode, text: string[]): CompletionItem {
 
   return completionItem;
 }
+function matchAll(pattern, haystack) {
+  var regex = new RegExp(pattern, "g");
+  var matches = [];
 
+  var match_result = haystack.match(regex);
+
+  for (let index in match_result) {
+    var item = match_result[index];
+    matches[index] = item.match(new RegExp(pattern));
+  }
+  return matches;
+}
 /**
  * Returns completion items lists from document symbols
  * @param {String} text
@@ -289,11 +300,14 @@ class StylusCompletion implements CompletionItemProvider {
       values = [];
     if (value) {
       if (isMap) {
-        currentWord = currentWord.trim().replace(":", " ").split(" ")[1];
+        currentWord = currentWord.trim().replace(":", " ").split(/\s+/)[1];
         const words = currentWord.split(/[\.\[\]]/);
-        text = text
-          .match(new RegExp("\\" + words[0] + ".*=.*([\\s\\S]*).*\\}", "im"))[1]
-          .replace(/\:/g, "=");
+        const mathed = matchAll("\\" + words[0] + ".*\\{([^}]*)\\}", text);
+        text = "";
+        for (const item of mathed) {
+          text += item[1];
+        }
+        text = text.replace(/\:/g, "=").replace(/,/g, "");
         symbols = compact(getAllSymbols(text, words[1])).filter(
           (item) => item.kind === CompletionItemKind.Variable
         );
@@ -307,6 +321,13 @@ class StylusCompletion implements CompletionItemProvider {
         symbols = compact(getAllSymbols(text, currentWord)).filter(
           (item) => item.kind === CompletionItemKind.Variable
         );
+        //去重
+        var temp = [];
+        symbols = symbols.filter((item, index) => {
+          if (temp.includes(item.label)) return false;
+          temp.push(item.label);
+          return true;
+        });
       }
     } else {
       atRules = getAtRules(cssSchema, currentWord);
@@ -317,6 +338,7 @@ class StylusCompletion implements CompletionItemProvider {
       );
       symbols = compact(getAllSymbols(text, currentWord));
     }
+    console.log(JSON.stringify(symbols));
     const completions = [].concat(
       symbols,
       atRules,

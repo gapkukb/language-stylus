@@ -2,8 +2,8 @@
   "name": "language-stylus-plus",
   "displayName": "language-stylus-plus",
   "description": "Stylus language support",
-  "version": "1.11.0",
-  "publisher": "sysoev",
+  "version": "1.11.3",
+  "publisher": "carlosJoo",
   "engines": {
     "vscode": "^1.8.0"
   },

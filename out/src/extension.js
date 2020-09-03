@@ -20,6 +20,7 @@ function activate(context) {
     const varsFilePath = config.get("variablesFilePath");
     const completionItemProvider = new completion_item_provider_1.default();
     var filePath = path.join(vscode.workspace.rootPath, varsFilePath);
+    console.log("stylus-vars-file", filePath, fs.existsSync(filePath));
     if (filePath) {
         if (fs.existsSync(filePath)) {
             var content = fs.readFileSync(filePath).toString();

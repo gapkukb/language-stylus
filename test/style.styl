@@ -27,11 +27,13 @@ $color-wheel = {
 
 .color
   color: #fff
+  color:#fff;
+
 
 .test
   color: $my-var1
   color: #fff
-  color: springgreen
+  color
 
   .sub-test-class
     $color2 = green
@@ -39,6 +41,7 @@ $color-wheel = {
 
     #test
       padding: 20px
+      color $color-wheel
 
     &__item
       background: $color2

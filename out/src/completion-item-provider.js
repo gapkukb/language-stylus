@@ -115,6 +115,16 @@ function _selectorCallSymbol(node, text) {
     completionItem.kind = vscode_1.CompletionItemKind.Class;
     return completionItem;
 }
+function matchAll(pattern, haystack) {
+    var regex = new RegExp(pattern, "g");
+    var matches = [];
+    var match_result = haystack.match(regex);
+    for (let index in match_result) {
+        var item = match_result[index];
+        matches[index] = item.match(new RegExp(pattern));
+    }
+    return matches;
+}
 /**
  * Returns completion items lists from document symbols
  * @param {String} text
@@ -222,11 +232,14 @@ class StylusCompletion {
         let symbols = [], atRules = [], properties = [], values = [];
         if (value) {
             if (isMap) {
-                currentWord = currentWord.trim().replace(":", " ").split(" ")[1];
+                currentWord = currentWord.trim().replace(":", " ").split(/\s+/)[1];
                 const words = currentWord.split(/[\.\[\]]/);
-                text = text
-                    .match(new RegExp("\\" + words[0] + ".*=.*([\\s\\S]*).*\\}", "im"))[1]
-                    .replace(/\:/g, "=");
+                const mathed = matchAll("\\" + words[0] + ".*\\{([^}]*)\\}", text);
+                text = "";
+                for (const item of mathed) {
+                    text += item[1];
+                }
+                text = text.replace(/\:/g, "=").replace(/,/g, "");
                 symbols = utils_1.compact(getAllSymbols(text, words[1])).filter((item) => item.kind === vscode_1.CompletionItemKind.Variable);
                 if (currentWord.includes(".")) {
                     symbols.forEach((item) => {
@@ -237,6 +250,14 @@ class StylusCompletion {
             else {
                 values = getValues(cssSchema, currentWord);
                 symbols = utils_1.compact(getAllSymbols(text, currentWord)).filter((item) => item.kind === vscode_1.CompletionItemKind.Variable);
+                //去重
+                var temp = [];
+                symbols = symbols.filter((item, index) => {
+                    if (temp.includes(item.label))
+                        return false;
+                    temp.push(item.label);
+                    return true;
+                });
             }
         }
         else {
@@ -244,6 +265,7 @@ class StylusCompletion {
             properties = getProperties(cssSchema, currentWord, config.get("useSeparator", true));
             symbols = utils_1.compact(getAllSymbols(text, currentWord));
         }
+        console.log(JSON.stringify(symbols));
         const completions = [].concat(symbols, atRules, properties, values, isMap ? [] : config.get("useBuiltinFunctions", true) ? built_in_1.default : []);
         return completions;
     }
